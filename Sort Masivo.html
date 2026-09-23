@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sort Masivo</title>
+<style>
+:root{
+  --bg1:#1a1040; --bg2:#0d0824; --line:rgba(255,255,255,.12);
+  --ok:#3ddc84; --accent:#ffe14d;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg2);min-height:100%;}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:radial-gradient(circle at 50% 0%, var(--bg1), var(--bg2) 70%);
+  color:#fff; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+header{
+  position:sticky; top:0; top:env(safe-area-inset-top,0px); z-index:10;
+  padding:14px 16px 10px; text-align:center;
+  background:rgba(13,8,36,.94); backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);
+}
+h1{margin:0 0 4px; font-size:1.3rem; letter-spacing:.5px; font-weight:800;
+  background:linear-gradient(90deg,#ff5fa2,#ffe14d,#3ddc84,#4fc3ff,#c060ff);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  background-size:300% 100%; animation:hue 6s linear infinite;
+}
+@keyframes hue{to{background-position:300% 0;}}
+.sub{font-size:.72rem; color:#a99fd6;}
+.bar{display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:10px;}
+.bar label{font-size:.7rem; color:#c7bdfa;}
+.bar input[type=number]{
+  width:70px; background:rgba(255,255,255,.08); border:1px solid var(--line); color:#fff;
+  border-radius:8px; padding:5px 8px; font-size:.78rem;
+}
+button.mini{
+  background:rgba(255,255,255,.08); color:#fff; border:1px solid var(--line);
+  border-radius:999px; padding:6px 14px; font-size:.72rem; cursor:pointer; font-weight:600;
+}
+button.mini:active{transform:scale(.95);}
+#status{font-size:.72rem; color:#8a80b8; margin-top:4px;}
+#status.win{color:var(--ok); font-weight:800;}
+#grid{
+  max-width:2000px; margin:0 auto; padding:16px 14px 80px;
+  display:grid; grid-template-columns:repeat(auto-fill, minmax(30px,1fr)); gap:5px;
+  justify-items:center;
+}
+.tube{
+  width:30px; height:96px; border-radius:7px 7px 16px 16px;
+  border:2px solid rgba(255,255,255,.85);
+  background:rgba(255,255,255,.04);
+  display:flex; flex-direction:column-reverse; overflow:hidden;
+  cursor:pointer; transition:transform .12s;
+}
+.tube.selected{ transform:translateY(-9px); border-color:var(--accent); box-shadow:0 0 0 2px rgba(255,225,77,.4); }
+.tube.valid{ border-color:#fff; box-shadow:0 0 10px 2px var(--glow, rgba(255,255,255,.7)); animation:pulse 1s ease-in-out infinite; }
+@keyframes pulse{ 0%,100%{ filter:brightness(1);} 50%{ filter:brightness(1.5);} }
+.tube .seg{ width:100%; flex:1 1 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>SORT MASIVO</h1>
+  <div class="sub">un solo nivel gigante · toca un tubo, luego otro para verter</div>
+  <div class="bar">
+    <label>colores:</label>
+    <input id="colorInput" type="number" min="3" max="1200" value="400">
+    <button class="mini" id="regenBtn">🔀 generar</button>
+  </div>
+  <div id="status">preparando…</div>
+</header>
+<div id="grid"></div>
+
+<script>
+const CAP = 4;
+const gridEl = document.getElementById('grid');
+const statusEl = document.getElementById('status');
+const colorInput = document.getElementById('colorInput');
+document.getElementById('regenBtn').onclick = () => buildLevel(parseInt(colorInput.value)||400);
+
+function hueColor(h){ return `hsl(${((h%360)+360)%360},${70+Math.random()*15|0}%,${45+Math.random()*18|0}%)`; }
+
+let level = null;
+
+function buildLevel(numColors){
+  numColors = Math.max(3, Math.min(1200, numColors));
+  const emptyTubes = Math.max(4, Math.round(numColors * 0.08));
+  const colors = [];
+  for(let i=0;i<numColors;i++) colors.push(hueColor(i*(360/numColors)));
+
+  let units = [];
+  colors.forEach(c => { for(let i=0;i<CAP;i++) units.push(c); });
+  for(let i=units.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [units[i],units[j]]=[units[j],units[i]];
+  }
+  const totalTubes = numColors + emptyTubes;
+  const fillTubes = totalTubes - emptyTubes;
+  const tubes = Array.from({length: totalTubes}, ()=>[]);
+  units.forEach((u,i)=>{ tubes[i % fillTubes].push(u); });
+
+  level = { tubes, cap: CAP, selected: -1, numColors, totalTubes };
+  render();
+}
+
+function isSolved(){
+  return level.tubes.every(t => t.length===0 || (t.length===level.cap && t.every(c=>c===t[0])));
+}
+
+function canPour(a,b,cap){
+  if(a.length===0) return false;
+  if(b.length>=cap) return false;
+  if(b.length===0) return true;
+  return b[b.length-1]===a[a.length-1];
+}
+function doPour(a,b,cap){
+  const top = a[a.length-1];
+  while(a.length && a[a.length-1]===top && b.length<cap){ b.push(a.pop()); }
+}
+
+function render(){
+  gridEl.innerHTML = '';
+  const frag = document.createDocumentFragment();
+  const selTube = level.selected!==-1 ? level.tubes[level.selected] : null;
+  const glowColor = selTube && selTube.length ? selTube[selTube.length-1] : null;
+
+  level.tubes.forEach((tube, ti) => {
+    const el = document.createElement('div');
+    let cls = 'tube';
+    if(level.selected===ti) cls += ' selected';
+    else if(selTube && canPour(selTube, tube, level.cap)) cls += ' valid';
+    el.className = cls;
+    if(glowColor && cls.includes('valid')) el.style.setProperty('--glow', glowColor);
+    for(let i=0;i<level.cap;i++){
+      const seg = document.createElement('div');
+      seg.className = 'seg';
+      seg.style.background = tube[i] || 'transparent';
+      el.appendChild(seg);
+    }
+    el.addEventListener('click', () => onTubeClick(ti));
+    frag.appendChild(el);
+  });
+  gridEl.appendChild(frag);
+
+  const solved = isSolved();
+  statusEl.textContent = solved
+    ? `¡RESUELTO! 🎉 — ${level.numColors} colores, ${level.totalTubes} tubos`
+    : `${level.numColors} colores · ${level.totalTubes} tubos en juego`;
+  statusEl.classList.toggle('win', solved);
+}
+
+function onTubeClick(ti){
+  if(level.selected === -1){
+    if(level.tubes[ti].length===0) return;
+    level.selected = ti;
+  } else if(level.selected === ti){
+    level.selected = -1;
+  } else {
+    const a = level.tubes[level.selected], b = level.tubes[ti];
+    if(canPour(a,b,level.cap)) doPour(a,b,level.cap);
+    level.selected = -1;
+  }
+  render();
+}
+
+buildLevel(400);
+</script>
+</body>
+</html>
