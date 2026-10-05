@@ -7,165 +7,438 @@
 <style>
 :root{
   --bg1:#1a1040; --bg2:#0d0824; --line:rgba(255,255,255,.12);
-  --ok:#3ddc84; --accent:#ffe14d;
+  --ok:#3ddc84; --accent:#ffe14d; --trap:#ff4d6d;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-html,body{margin:0;padding:0;background:var(--bg2);min-height:100%;}
+[hidden]{display:none!important;}
+html,body{margin:0;padding:0;background:var(--bg2);height:100%;}
 body{
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
   background:radial-gradient(circle at 50% 0%, var(--bg1), var(--bg2) 70%);
-  color:#fff; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  color:#fff; display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  touch-action:manipulation; user-select:none; -webkit-user-select:none;
 }
 header{
-  position:sticky; top:0; top:env(safe-area-inset-top,0px); z-index:10;
-  padding:14px 16px 10px; text-align:center;
+  flex:0 0 auto; padding:10px 14px 8px; text-align:center;
   background:rgba(13,8,36,.94); backdrop-filter:blur(8px);
-  border-bottom:1px solid var(--line);
+  border-bottom:1px solid var(--line); transition:background .3s, border-color .3s;
 }
-h1{margin:0 0 4px; font-size:1.3rem; letter-spacing:.5px; font-weight:800;
+body.trapped header{ background:rgba(60,8,24,.94); border-bottom:2px solid var(--trap); }
+.top{display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;}
+h1{margin:0; font-size:1.15rem; letter-spacing:.5px; font-weight:800;
   background:linear-gradient(90deg,#ff5fa2,#ffe14d,#3ddc84,#4fc3ff,#c060ff);
   -webkit-background-clip:text; background-clip:text; color:transparent;
   background-size:300% 100%; animation:hue 6s linear infinite;
 }
 @keyframes hue{to{background-position:300% 0;}}
-.sub{font-size:.72rem; color:#a99fd6;}
-.bar{display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:10px;}
-.bar label{font-size:.7rem; color:#c7bdfa;}
-.bar input[type=number]{
-  width:70px; background:rgba(255,255,255,.08); border:1px solid var(--line); color:#fff;
-  border-radius:8px; padding:5px 8px; font-size:.78rem;
-}
+#lvl{font-size:.74rem; font-weight:800; letter-spacing:1px; padding:3px 10px; border-radius:999px;
+  border:1px solid currentColor; background:rgba(255,255,255,.04);}
+#stats{font-size:.7rem; color:#a99fd6; margin-top:6px; line-height:1.4;}
+#stats b{font-weight:800;}
+.bar{display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:8px;}
 button.mini{
   background:rgba(255,255,255,.08); color:#fff; border:1px solid var(--line);
   border-radius:999px; padding:6px 14px; font-size:.72rem; cursor:pointer; font-weight:600;
 }
 button.mini:active{transform:scale(.95);}
-#status{font-size:.72rem; color:#8a80b8; margin-top:4px;}
-#status.win{color:var(--ok); font-weight:800;}
-#grid{
-  max-width:2000px; margin:0 auto; padding:16px 14px 80px;
-  display:grid; grid-template-columns:repeat(auto-fill, minmax(30px,1fr)); gap:5px;
-  justify-items:center;
-}
+button.mini:disabled{opacity:.35; cursor:default;}
+button.warn{border-color:rgba(255,77,109,.6);}
+#status{font-size:.7rem; color:#8a80b8; margin-top:6px;}
+body.trapped #status{color:#ffb3c1;}
+
+#board{flex:1 1 auto; overflow:auto; display:flex; padding:10px;}
+#grid{margin:auto; display:flex; flex-wrap:wrap; justify-content:center; gap:var(--gy) var(--gx);}
+.cell{width:var(--w); padding-top:var(--lift); display:flex; flex-direction:column; align-items:center;
+  cursor:pointer; transition:opacity .15s;}
+.cell.dim{opacity:.28;}
 .tube{
-  width:30px; height:96px; border-radius:7px 7px 16px 16px;
-  border:2px solid rgba(255,255,255,.85);
+  width:var(--w); height:var(--h);
+  border-radius:calc(var(--w)*.22) calc(var(--w)*.22) calc(var(--w)*.5) calc(var(--w)*.5);
+  border:var(--bw) solid rgba(255,255,255,.85);
   background:rgba(255,255,255,.04);
   display:flex; flex-direction:column-reverse; overflow:hidden;
-  cursor:pointer; transition:transform .12s;
+  transition:transform .12s;
 }
-.tube.selected{ transform:translateY(-9px); border-color:var(--accent); box-shadow:0 0 0 2px rgba(255,225,77,.4); }
+.tube.selected{ transform:translateY(calc(var(--lift) * -1)); border-color:var(--accent); box-shadow:0 0 0 2px rgba(255,225,77,.4); }
 .tube.valid{ border-color:#fff; box-shadow:0 0 10px 2px var(--glow, rgba(255,255,255,.7)); animation:pulse 1s ease-in-out infinite; }
 @keyframes pulse{ 0%,100%{ filter:brightness(1);} 50%{ filter:brightness(1.5);} }
-.tube .seg{ width:100%; flex:1 1 0; }
+.seg{ width:100%; flex:1 1 0; position:relative; }
+.seg.hl::after{ content:''; position:absolute; inset:0; border:var(--bw) solid #fff;
+  animation:blink .7s ease-in-out infinite alternate; }
+@keyframes blink{ from{opacity:.25;} to{opacity:1;} }
+.band{ width:80%; height:var(--bandH); margin-top:var(--bandGap); border-radius:99px; }
+.cell.has .band{ background:var(--c); box-shadow:0 0 6px var(--c); }
+
+#toast{position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%) translateY(20px);
+  background:rgba(20,12,50,.96); border:1px solid var(--line); padding:9px 16px; border-radius:999px;
+  font-size:.78rem; opacity:0; pointer-events:none; transition:all .25s; white-space:nowrap; z-index:30;}
+#toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+#win{position:fixed; inset:0; background:rgba(5,3,15,.72); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; z-index:40;}
+#win .card{background:#160d3a; border:1px solid var(--line); border-radius:18px; padding:26px 28px; text-align:center; max-width:90vw;}
+#win .big{font-size:1.4rem; font-weight:900; color:var(--ok); letter-spacing:.5px;}
+#win .tier{margin:8px 0 18px; font-size:.85rem; font-weight:700;}
+#win button{font-size:.9rem; padding:10px 22px;}
 </style>
 </head>
 <body>
 <header>
-  <h1>SORT MASIVO</h1>
-  <div class="sub">un solo nivel gigante · toca un tubo, luego otro para verter</div>
+  <div class="top">
+    <h1>SORT MASIVO</h1>
+    <span id="lvl">…</span>
+  </div>
+  <div id="stats"></div>
   <div class="bar">
-    <label>colores:</label>
-    <input id="colorInput" type="number" min="3" max="1200" value="400">
-    <button class="mini" id="regenBtn">🔀 generar</button>
+    <button class="mini" id="undoBtn" title="Deshacer: primero tienes que resolver un nivel trampa">↶ deshacer 🪤</button>
+    <button class="mini" id="rerollBtn" title="Otro nivel del mismo número (no cuenta)">🔀 otro nivel</button>
+    <button class="mini warn" id="quitBtn" title="Salir de la trampa sin deshacer">✖ salir de la trampa</button>
   </div>
   <div id="status">preparando…</div>
 </header>
-<div id="grid"></div>
+<main id="board"><div id="grid"></div></main>
+<div id="toast"></div>
+<div id="win" hidden><div class="card">
+  <div class="big" id="winTitle"></div>
+  <div class="tier" id="winTier"></div>
+  <button class="mini" id="nextBtn">siguiente nivel →</button>
+</div></div>
 
 <script>
-const CAP = 4;
-const gridEl = document.getElementById('grid');
-const statusEl = document.getElementById('status');
-const colorInput = document.getElementById('colorInput');
-document.getElementById('regenBtn').onclick = () => buildLevel(parseInt(colorInput.value)||400);
+/* ======================= LÓGICA PURA ======================= */
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];}return a;}
 
-function hueColor(h){ return `hsl(${((h%360)+360)%360},${70+Math.random()*15|0}%,${45+Math.random()*18|0}%)`; }
+const TIERS=[
+  {id:'facil',       s:'fácil',       p:'fáciles',       from:1,  to:5,   col:[3,5],   cap:[3,4], emp:2, color:'#3ddc84'},
+  {id:'normal',      s:'normal',      p:'normales',      from:6,  to:15,  col:[5,9],   cap:[4,4], emp:2, color:'#4fc3ff'},
+  {id:'dificil',     s:'difícil',     p:'difíciles',     from:16, to:30,  col:[9,16],  cap:[4,5], emp:2, color:'#ffe14d'},
+  {id:'endemoniado', s:'endemoniado', p:'endemoniados',  from:31, to:50,  col:[15,28], cap:[5,6], emp:3, color:'#ff8a3d'},
+  {id:'infernal',    s:'infernal',    p:'infernales',    from:51, to:80,  col:[28,60], cap:[6,7], emp:3, color:'#ff4d6d'},
+  {id:'abismal',     s:'abismal',     p:'abismales',     from:81, to:Infinity,                         color:'#c060ff'},
+];
+const tierOf=id=>TIERS.find(t=>t.id===id);
 
-let level = null;
-
-function buildLevel(numColors){
-  numColors = Math.max(3, Math.min(1200, numColors));
-  const emptyTubes = Math.max(4, Math.round(numColors * 0.08));
-  const colors = [];
-  for(let i=0;i<numColors;i++) colors.push(hueColor(i*(360/numColors)));
-
-  let units = [];
-  colors.forEach(c => { for(let i=0;i<CAP;i++) units.push(c); });
-  for(let i=units.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [units[i],units[j]]=[units[j],units[i]];
+function levelParams(L){
+  const t=TIERS.find(t=>L>=t.from&&L<=t.to);
+  if(t.id==='abismal'){
+    const nColors=Math.min(900, 60+Math.round((L-80)*7*(0.85+Math.random()*0.3)));
+    return {tier:t.id, nColors, cap:6+rnd(0,2), empties:Math.max(4,Math.round(nColors*0.05))};
   }
-  const totalTubes = numColors + emptyTubes;
-  const fillTubes = totalTubes - emptyTubes;
-  const tubes = Array.from({length: totalTubes}, ()=>[]);
-  units.forEach((u,i)=>{ tubes[i % fillTubes].push(u); });
-
-  level = { tubes, cap: CAP, selected: -1, numColors, totalTubes };
-  render();
+  const f=(L-t.from)/Math.max(1,t.to-t.from);
+  const lerp=(r,j)=>{const v=r[0]+(r[1]-r[0])*f+(Math.random()*2-1)*j; return Math.round(Math.min(r[1],Math.max(r[0],v)));};
+  const nColors=lerp(t.col,1.2);
+  return {tier:t.id, nColors, cap:lerp(t.cap,0.6), empties:nColors>40?Math.max(t.emp,Math.round(nColors*0.06)):t.emp};
 }
 
-function isSolved(){
-  return level.tubes.every(t => t.length===0 || (t.length===level.cap && t.every(c=>c===t[0])));
+// Trampa: casi siempre chiquita, rara vez grande
+function trapParams(){
+  const r=Math.random();
+  if(r<0.72) return {nColors:rnd(3,4),  cap:rnd(3,4), empties:2};
+  if(r<0.93) return {nColors:rnd(5,7),  cap:4,        empties:2};
+  if(r<0.99) return {nColors:rnd(8,12), cap:rnd(4,5), empties:2};
+  return            {nColors:rnd(14,22),cap:5,        empties:3}; // 1%: trampa gorda
 }
 
+/* --- Colores que "se odian": muestreo de punto más lejano en OKLab --- */
+function oklabToLinear(L,a,b){
+  const l_=L+0.3963377774*a+0.2158037573*b, m_=L-0.1055613458*a-0.0638541728*b, s_=L-0.0894841775*a-1.2914855480*b;
+  const l=l_*l_*l_, m=m_*m_*m_, s=s_*s_*s_;
+  return [ 4.0767416621*l-3.3077115913*m+0.2309699292*s,
+          -1.2684380046*l+2.6097574011*m-0.3413193965*s,
+          -0.0041960863*l-0.7034186147*m+1.7076147010*s];
+}
+const gam=x=>x<=0.0031308?12.92*x:1.055*Math.pow(x,1/2.4)-0.055;
+function makePalette(n){
+  const poolN=Math.min(14000,Math.max(2500,n*14));
+  const PL=[],PA=[],PB=[],RGB=[];
+  let tries=0;
+  while(PL.length<poolN && tries<poolN*30){
+    tries++;
+    const L=0.42+Math.random()*0.54, a=(Math.random()*2-1)*0.33, b=(Math.random()*2-1)*0.33;
+    const c=oklabToLinear(L,a,b);
+    if(c[0]<0||c[0]>1||c[1]<0||c[1]>1||c[2]<0||c[2]>1) continue;
+    PL.push(L);PA.push(a);PB.push(b);RGB.push(c);
+  }
+  const P=PL.length, minD=new Float64Array(P).fill(Infinity), out=[];
+  let idx=Math.random()*P|0;
+  for(let k=0;k<n;k++){
+    const c=RGB[idx];
+    out.push('#'+c.map(v=>Math.round(gam(v)*255).toString(16).padStart(2,'0')).join(''));
+    const L=PL[idx],A=PA[idx],B=PB[idx];
+    let bi=0,bd=-1;
+    for(let i=0;i<P;i++){
+      const dL=PL[i]-L,dA=PA[i]-A,dB=PB[i]-B, d=dL*dL*1.2+dA*dA+dB*dB;
+      if(d<minD[i]) minD[i]=d;
+      if(minD[i]>bd){bd=minD[i];bi=i;}
+    }
+    idx=bi;
+  }
+  return shuffle(out);
+}
+
+/* --- Reglas --- */
 function canPour(a,b,cap){
-  if(a.length===0) return false;
-  if(b.length>=cap) return false;
-  if(b.length===0) return true;
-  return b[b.length-1]===a[a.length-1];
+  if(!a.length||b.length>=cap) return false;
+  return !b.length || b[b.length-1]===a[a.length-1];
 }
 function doPour(a,b,cap){
-  const top = a[a.length-1];
-  while(a.length && a[a.length-1]===top && b.length<cap){ b.push(a.pop()); }
+  const top=a[a.length-1]; let n=0;
+  while(a.length&&a[a.length-1]===top&&b.length<cap){b.push(a.pop());n++;}
+  return n;
 }
+const tubeDone=(t,cap)=>t.length===cap&&t.every(c=>c===t[0]);
+const isSolved=(tubes,cap)=>tubes.every(t=>!t.length||tubeDone(t,cap));
 
-function render(){
-  gridEl.innerHTML = '';
-  const frag = document.createDocumentFragment();
-  const selTube = level.selected!==-1 ? level.tubes[level.selected] : null;
-  const glowColor = selTube && selTube.length ? selTube[selTube.length-1] : null;
-
-  level.tubes.forEach((tube, ti) => {
-    const el = document.createElement('div');
-    let cls = 'tube';
-    if(level.selected===ti) cls += ' selected';
-    else if(selTube && canPour(selTube, tube, level.cap)) cls += ' valid';
-    el.className = cls;
-    if(glowColor && cls.includes('valid')) el.style.setProperty('--glow', glowColor);
-    for(let i=0;i<level.cap;i++){
-      const seg = document.createElement('div');
-      seg.className = 'seg';
-      seg.style.background = tube[i] || 'transparent';
-      el.appendChild(seg);
+/* --- Solver (DFS con presupuesto) para garantizar que el nivel tiene solución --- */
+function solve(start,cap,budget,deadline=Infinity){
+  const seen=new Set(); let nodes=0;
+  const maxDepth=Math.min(900,start.length*cap*2);
+  const key=ts=>ts.map(t=>t.join(',')).sort().join('|');
+  function dfs(ts,depth){
+    if(isSolved(ts,cap)) return true;
+    if(++nodes>budget) return null;
+    if((nodes&127)===0 && Date.now()>deadline) return null;
+    const k=key(ts); if(seen.has(k)) return false; seen.add(k);
+    if(depth>maxDepth) return false;
+    const moves=[];
+    for(let i=0;i<ts.length;i++){
+      const a=ts[i]; if(!a.length) continue;
+      const top=a[a.length-1]; let run=1;
+      while(run<a.length&&a[a.length-1-run]===top) run++;
+      const uniform=run===a.length;
+      if(uniform&&a.length===cap) continue;
+      let emptyTried=false;
+      for(let j=0;j<ts.length;j++){
+        if(i===j) continue; const b=ts[j];
+        if(b.length>=cap) continue;
+        if(!b.length){ if(uniform||emptyTried) continue; emptyTried=true; moves.push([i,j,1]); }
+        else if(b[b.length-1]===top){
+          moves.push([i,j,(cap-b.length>=run?3:2)+(b.every(c=>c===top)?1:0)]);
+        }
+      }
     }
-    el.addEventListener('click', () => onTubeClick(ti));
-    frag.appendChild(el);
-  });
-  gridEl.appendChild(frag);
-
-  const solved = isSolved();
-  statusEl.textContent = solved
-    ? `¡RESUELTO! 🎉 — ${level.numColors} colores, ${level.totalTubes} tubos`
-    : `${level.numColors} colores · ${level.totalTubes} tubos en juego`;
-  statusEl.classList.toggle('win', solved);
-}
-
-function onTubeClick(ti){
-  if(level.selected === -1){
-    if(level.tubes[ti].length===0) return;
-    level.selected = ti;
-  } else if(level.selected === ti){
-    level.selected = -1;
-  } else {
-    const a = level.tubes[level.selected], b = level.tubes[ti];
-    if(canPour(a,b,level.cap)) doPour(a,b,level.cap);
-    level.selected = -1;
+    moves.sort((x,y)=>y[2]-x[2]);
+    for(const [i,j] of moves){
+      const n2=ts.map(t=>t.slice());
+      doPour(n2[i],n2[j],cap);
+      const r=dfs(n2,depth+1); if(r!==false) return r;
+    }
+    return false;
   }
-  render();
+  return dfs(start.map(t=>t.slice()),0);
 }
 
-buildLevel(400);
+function deal(nColors,cap,empties){
+  const units=[];
+  for(let c=0;c<nColors;c++) for(let i=0;i<cap;i++) units.push(c);
+  shuffle(units);
+  const tubes=[];
+  for(let t=0;t<nColors;t++) tubes.push(units.slice(t*cap,(t+1)*cap));
+  for(let e=0;e<empties;e++) tubes.push([]);
+  return tubes;
+}
+
+function buildGame({nColors,cap,empties,kind,tier=null,level=null}){
+  let tubes, tries=0;
+  const check=nColors<=60, budget=nColors<=25?40000:20000;
+  const end=Date.now()+700;               // máx ~0.7 s verificando
+  while(true){
+    tries++;
+    tubes=deal(nColors,cap,empties);
+    if(tries<40 && tubes.some(t=>tubeDone(t,cap))) continue;
+    if(!check) break;
+    const r=solve(tubes,cap,budget,Math.min(end,Date.now()+250));
+    if(r===true) break;
+    if(tries%3===0) empties++;           // si no sale, se le da un tubo vacío extra
+    if(Date.now()>end || tries>=10){      // no se pudo comprobar a tiempo: tubo extra de seguro
+      tubes.push([]); break;
+    }
+  }
+  return {kind,tier,level,cap,palette:makePalette(nColors),tubes:shuffle(tubes),hist:[]};
+}
+
+/* ======================= UI ======================= */
+const $=id=>document.getElementById(id);
+const board=$('board'), grid=$('grid');
+const KEY='sortMasivo.v2';
+let S, sel=-1, busy=false;
+
+function load(){
+  try{ S=JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(!S||!S.stats||!Array.isArray(S.stack)) S={level:1,stats:{},stack:[]};
+}
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(S)); }catch(e){} }
+const G=()=>S.stack[S.stack.length-1];
+
+let toastT;
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+function statsHTML(){
+  const parts=TIERS.filter(t=>S.stats[t.id]).map(t=>{
+    const n=S.stats[t.id];
+    return `<b style="color:${t.color}">${n}</b> ${n===1?t.s:t.p}`;
+  });
+  const tr=S.stats.trampas||0;
+  if(tr) parts.push(`🪤 <b>${tr}</b> ${tr===1?'trampa':'trampas'}`);
+  return parts.length?'te pasaste: '+parts.join(' · '):'aún no te pasas ningún nivel';
+}
+
+function renderHeader(){
+  $('stats').innerHTML=statsHTML();
+  const g=G();
+  document.body.classList.toggle('trapped',!!g&&g.kind==='trap');
+  if(!g) return;
+  const lvl=$('lvl');
+  if(g.kind==='trap'){
+    const depth=S.stack.length-1;
+    lvl.textContent=`🪤 TRAMPA${depth>1?' ×'+depth:''}`; lvl.style.color='var(--trap)';
+  }else{
+    const t=tierOf(g.tier);
+    lvl.textContent=`NIVEL ${g.level} · ${t.s.toUpperCase()}`; lvl.style.color=t.color;
+  }
+  $('undoBtn').disabled=!g.hist.length;
+  $('rerollBtn').hidden=g.kind==='trap';
+  $('quitBtn').hidden=g.kind!=='trap';
+  const nC=g.palette.length, done=g.tubes.filter(t=>tubeDone(t,g.cap)).length;
+  $('status').textContent=(g.kind==='trap'?'resuélvela para deshacer tu movimiento · ':'')+
+    `${nC} colores · ${g.tubes.length} tubos · profundidad ${g.cap} · ${done}/${nC} listos · ${g.hist.length} movs`;
+}
+
+/* Ajuste al tamaño/ratio de pantalla: busca el nº de columnas que maximiza el tamaño del tubo */
+function layout(){
+  const g=G(); if(!g) return;
+  const n=g.tubes.length, k=0.55*g.cap+0.9;              // alto/ancho del tubo
+  const W=board.clientWidth-20, H=board.clientHeight-20;
+  let bw=0,bc=1;
+  for(let c=1;c<=n;c++){
+    const rows=Math.ceil(n/c);
+    const w=Math.min(W/(c*1.32-0.32), H/(rows*(k+0.55)-0.17));
+    if(w>bw){bw=w;bc=c;}
+  }
+  let w=Math.min(84,bw), c=bc;
+  if(w<16){ w=16; }
+  c=Math.max(1,Math.min(n,Math.floor((W+0.32*w)/(1.32*w))));
+  const rows=Math.ceil(n/c); c=Math.ceil(n/rows);          // filas parejas
+  w=Math.floor(w*10)/10;
+  const gx=w*0.32;
+  const st=grid.style;
+  st.setProperty('--w',w+'px');
+  st.setProperty('--h',(w*k)+'px');
+  st.setProperty('--gx',gx+'px');
+  st.setProperty('--gy',(w*0.17)+'px');
+  st.setProperty('--lift',(w*0.18)+'px');
+  st.setProperty('--bandH',Math.max(3,w*0.12)+'px');
+  st.setProperty('--bandGap',(w*0.08)+'px');
+  st.setProperty('--bw',Math.max(1,Math.min(2.5,w*0.06))+'px');
+  st.width=(c*w+(c-1)*gx+1)+'px';
+}
+
+function renderGrid(){
+  const g=G(); if(!g){grid.innerHTML='';return;}
+  const selTube=sel>=0?g.tubes[sel]:null;
+  const c=selTube&&selTube.length?selTube[selTube.length-1]:null;
+  const col=c!==null?g.palette[c]:null;
+  const frag=document.createDocumentFragment();
+  g.tubes.forEach((t,ti)=>{
+    const cell=document.createElement('div'); cell.className='cell';
+    const tube=document.createElement('div'); tube.className='tube';
+    const has=c!==null&&t.includes(c);
+    const valid=selTube&&ti!==sel&&canPour(selTube,t,g.cap);
+    if(ti===sel) tube.classList.add('selected');
+    else if(valid){ tube.classList.add('valid'); tube.style.setProperty('--glow',col); }
+    if(c!==null&&ti!==sel&&!has&&!valid) cell.classList.add('dim');
+    if(has){ cell.classList.add('has'); cell.style.setProperty('--c',col); }
+    for(let i=0;i<g.cap;i++){
+      const s=document.createElement('div'); s.className='seg';
+      if(t[i]!==undefined){ s.style.background=g.palette[t[i]]; if(t[i]===c) s.classList.add('hl'); }
+      tube.appendChild(s);
+    }
+    const band=document.createElement('div'); band.className='band';
+    cell.appendChild(tube); cell.appendChild(band);
+    cell.addEventListener('click',()=>onTube(ti));
+    frag.appendChild(cell);
+  });
+  grid.innerHTML=''; grid.appendChild(frag);
+}
+
+function refresh(){ renderHeader(); layout(); renderGrid(); }
+
+function onTube(ti){
+  if(busy) return;
+  const g=G(); if(!g) return;
+  if(sel===-1){ if(!g.tubes[ti].length) return; sel=ti; }
+  else if(sel===ti){ sel=-1; }
+  else{
+    const a=g.tubes[sel], b=g.tubes[ti];
+    if(canPour(a,b,g.cap)){
+      const n=doPour(a,b,g.cap); g.hist.push([sel,ti,n]); sel=-1;
+      save(); renderHeader(); renderGrid(); checkWin(); return;
+    }
+    sel=g.tubes[ti].length?ti:-1;   // tocar otro tubo cambia la selección
+  }
+  renderGrid();
+}
+
+function checkWin(){
+  const g=G(); if(!isSolved(g.tubes,g.cap)) return;
+  busy=true;
+  if(g.kind==='trap'){
+    setTimeout(()=>{
+      S.stack.pop();
+      S.stats.trampas=(S.stats.trampas||0)+1;
+      const p=G(), h=p.hist.pop();
+      if(h){ const [a,b,n]=h; for(let i=0;i<n;i++) p.tubes[a].push(p.tubes[b].pop()); }
+      sel=-1; busy=false; save(); refresh();
+      toast('🪤 trampa superada · movimiento deshecho');
+    },500);
+  }else{
+    const L=g.level, t=tierOf(g.tier);
+    S.stats[g.tier]=(S.stats[g.tier]||0)+1;
+    S.level=L+1; S.stack=[]; save();
+    renderHeader();
+    setTimeout(()=>{
+      $('winTitle').textContent=`¡NIVEL ${L} SUPERADO! 🎉`;
+      $('winTier').textContent=t.s.toUpperCase();
+      $('winTier').style.color=t.color;
+      $('win').hidden=false; busy=false;
+    },450);
+  }
+}
+
+function newLevel(){
+  busy=true; sel=-1;
+  $('status').textContent='generando nivel…';
+  setTimeout(()=>{
+    const p=levelParams(S.level);
+    S.stack=[buildGame({...p,kind:'main',level:S.level})];
+    save(); busy=false; refresh();
+  },30);
+}
+
+$('undoBtn').onclick=()=>{
+  if(busy) return;
+  const g=G(); if(!g||!g.hist.length) return;
+  S.stack.push(buildGame({...trapParams(),kind:'trap'}));
+  sel=-1; save(); refresh();
+  toast('🪤 resuelve la trampa para deshacer');
+};
+$('quitBtn').onclick=()=>{
+  if(busy||G().kind!=='trap') return;
+  S.stack.pop(); sel=-1; save(); refresh();
+  toast('saliste de la trampa · no se deshizo nada');
+};
+$('rerollBtn').onclick=()=>{ if(!busy) newLevel(); };
+$('nextBtn').onclick=()=>{ $('win').hidden=true; newLevel(); };
+
+new ResizeObserver(()=>layout()).observe(board);
+
+load();
+if(!S.stack.length) newLevel(); else refresh();
 </script>
 </body>
 </html>
